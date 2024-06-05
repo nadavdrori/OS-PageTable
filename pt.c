@@ -1,4 +1,5 @@
 #include "os.h"
+#include <stdlib.h>
 
 int *PT_Levels(uint16_t vpn)
 {
