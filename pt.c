@@ -19,13 +19,12 @@ int *PT_Levels(uint16_t vpn)
 
 void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn)
 {
-    uint64_t invalid_mask = ~(1ULL);
-
     int *levels = PT_Levels(vpn);
     uint64_t *pt_run = phys_to_virt(pt);
 
-    // Create the valid bit mask
     uint64_t mask = (1ULL << 1) - 1;
+    uint64_t invalid_mask = ~(1ULL);
+
     uint64_t *next_pt = NULL;
     int valid = 0;
 
