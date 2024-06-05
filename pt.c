@@ -45,7 +45,7 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn)
             }
             else
             {
-                next_pt = (uint64_t *)(pt_run[levels[i]] >> 12) << 12;
+                next_pt = (uint64_t *)((pt_run[levels[i]] >> 12) << 12);
                 pt_run = phys_to_virt(*next_pt);
             }
             i++;
@@ -65,14 +65,14 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn)
             valid = (int)extracted;
             if (valid == 1 && creat_new == 0)
             {
-                next_pt = (uint64_t *)(uint64_t *)(pt_run[levels[i]] >> 12) << 12;
+                next_pt = (uint64_t *)((pt_run[levels[i]] >> 12) << 12);
             }
             else
             {
                 creat_new = 1;
                 uint64_t new_pt = (alloc_page_frame() << 12);
                 pt_run[levels[i]] = (new_pt | mask);
-                next_pt = (uint64_t *)(pt_run[levels[i]] >> 12) << 12;
+                next_pt = (uint64_t *)((pt_run[levels[i]] >> 12) << 12);
             }
             pt_run = phys_to_virt(*next_pt);
         }
@@ -104,7 +104,7 @@ uint64_t page_table_query(uint64_t pt, uint64_t vpn)
         }
         else
         {
-            next_pt = (uint64_t *)(pt_run[levels[i]] >> 12) << 12;
+            next_pt = (uint64_t *)((pt_run[levels[i]] >> 12) << 12);
         }
         pt_run = phys_to_virt(*next_pt);
     }
