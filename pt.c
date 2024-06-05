@@ -4,6 +4,7 @@
 int *PT_Levels(uint16_t vpn)
 {
     int *levels = malloc(5 * sizeof(int));
+    int length = sizeof(levels) / sizeof(levels[0]);
     for (int i = 0; i <= 36;)
     {
         // Create the levels bit mask
@@ -11,7 +12,7 @@ int *PT_Levels(uint16_t vpn)
         // Apply the mask and shift right
         uint64_t extracted = (vpn >> i) & mask;
 
-        levels[len(levels) - i] = (int)extracted;
+        levels[length - i] = (int)extracted;
         i += 9;
     }
     return levels;
@@ -20,6 +21,7 @@ int *PT_Levels(uint16_t vpn)
 void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn)
 {
     int *levels = PT_Levels(vpn);
+    int length = sizeof(levels) / sizeof(levels[0]);
     uint64_t *pt_run = phys_to_virt(pt);
 
     uint64_t mask = (1ULL << 1) - 1;
@@ -28,10 +30,10 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn)
     uint64_t *next_pt = NULL;
     int valid = 0;
 
-    if (ppn = NO_MAPPING)
+    if (ppn == NO_MAPPING)
     {
         int i = 0;
-        while (i < len(levels) - 1)
+        while (i < length - 1)
         {
             // Apply the mask
             uint64_t extracted = pt_run[levels[i]] & mask;
@@ -44,19 +46,19 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn)
             else
             {
                 next_pt = (pt_run[levels[i]] >> 12) << 12;
-                pt_run = phys_to_virt(next_pt);
+                pt_run = phys_to_virt(&next_pt);
             }
             i++;
         }
-        if (i == len(levels) - 1)
+        if (i == length - 1)
         {
-            pt_run[levels[len(levels) - 1]] = pt_run[levels[len(levels) - 1]] & invalid_mask;
+            pt_run[levels[length - 1]] = pt_run[levels[length - 1]] & invalid_mask;
         }
     }
     else
     {
         int creat_new = 0;
-        for (int i = 0; i < len(levels) - 1; i++)
+        for (int i = 0; i < length - 1; i++)
         {
             // Apply the mask
             uint64_t extracted = pt_run[levels[i]] & mask;
@@ -72,9 +74,9 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn)
                 pt_run[levels[i]] = (new_pt | mask);
                 next_pt = (pt_run[levels[i]] >> 12) << 12;
             }
-            pt_run = phys_to_virt(next_pt);
+            pt_run = phys_to_virt(&next_pt);
         }
-        pt_run[levels[len(levels) - 1]] = (ppn << 12) | mask;
+        pt_run[levels[length - 1]] = (ppn << 12) | mask;
     }
 }
 
@@ -82,6 +84,7 @@ uint64_t page_table_query(uint64_t pt, uint64_t vpn)
 {
 
     int *levels = PT_Levels(vpn);
+    int length = sizeof(levels) / sizeof(levels[0]);
     uint64_t *pt_run = phys_to_virt(pt);
 
     // Create the valid bit mask
@@ -89,7 +92,7 @@ uint64_t page_table_query(uint64_t pt, uint64_t vpn)
     uint64_t *next_pt = NULL;
     int valid = 0;
 
-    for (int i = 0; i < len(levels) - 1; i++)
+    for (int i = 0; i < length - 1; i++)
     {
         // Apply the mask
         uint64_t extracted = pt_run[levels[i]] & mask;
@@ -103,7 +106,7 @@ uint64_t page_table_query(uint64_t pt, uint64_t vpn)
         {
             next_pt = (pt_run[levels[i]] >> 12) << 12;
         }
-        pt_run = phys_to_virt(next_pt);
+        pt_run = phys_to_virt(&next_pt);
     }
-    return (pt_run[levels[len(levels) - 1]] >> 12);
+    return (pt_run[levels[length - 1]] >> 12);
 }
