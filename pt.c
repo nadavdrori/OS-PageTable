@@ -1,4 +1,5 @@
 #include "os.h"
+#include <stdlib.h>
 
 int *PT_Levels(uint16_t vpn)
 {
@@ -18,6 +19,8 @@ int *PT_Levels(uint16_t vpn)
 
 void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn)
 {
+    uint64_t invalid_mask = ~(1ULL);
+
     int *levels = PT_Levels(vpn);
     uint64_t *pt_run = phys_to_virt(pt);
 
@@ -31,10 +34,6 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn)
         int i = 0;
         while (i < len(levels) - 1)
         {
-            if (pt_run[levels[i]] == NULL)
-            {
-                break;
-            }
             // Apply the mask
             uint64_t extracted = pt_run[levels[i]] & mask;
             valid = (int)extracted;
@@ -52,7 +51,7 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn)
         }
         if (i == len(levels) - 1)
         {
-            pt_run[levels[len(levels) - 1]] = NULL;
+            pt_run[levels[len(levels) - 1]] = pt_run[levels[len(levels) - 1]] & invalid_mask;
         }
     }
     else
@@ -60,13 +59,10 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn)
         int creat_new = 0;
         for (int i = 0; i < len(levels) - 1; i++)
         {
-            if (pt_run[levels[i]] != NULL)
-            {
-                // Apply the mask
-                uint64_t extracted = pt_run[levels[i]] & mask;
-                valid = (int)extracted;
-            }
-            if (pt_run[levels[i]] != NULL && valid == 1 && creat_new == 0)
+            // Apply the mask
+            uint64_t extracted = pt_run[levels[i]] & mask;
+            valid = (int)extracted;
+            if (valid == 1 && creat_new == 0)
             {
                 next_pt = (pt_run[levels[i]] >> 12) << 12;
             }
@@ -96,10 +92,6 @@ uint64_t page_table_query(uint64_t pt, uint64_t vpn)
 
     for (int i = 0; i < len(levels) - 1; i++)
     {
-        if (pt_run[levels[i]] == NULL)
-        {
-            return NO_MAPPING;
-        }
         // Apply the mask
         uint64_t extracted = pt_run[levels[i]] & mask;
         valid = (int)extracted;
