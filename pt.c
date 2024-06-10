@@ -6,16 +6,15 @@ int *PT_Levels(uint16_t vpn)
     int *levels = malloc(5 * sizeof(int));
     int length = 5;
     int j = 0;
-    for (int i = 0; i <= 36;)
+
+    // Create the levels bit mask
+    uint64_t mask = (1ULL << 9) - 1;
+    for (int i = 0; i <= 36; i += 9; j++)
     {
-        // Create the levels bit mask
-        uint64_t mask = (1ULL << 9) - 1;
         // Apply the mask and shift right
         uint64_t extracted = (vpn >> i) & mask;
 
         levels[length - j - 1] = (int)extracted;
-        i += 9;
-        j += 1;
     }
     return levels;
 }
@@ -25,11 +24,15 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn)
     int *levels = PT_Levels(vpn);
     int length = 5;
     uint64_t *pt_run = phys_to_virt(pt);
+    if (pt_run == NULL)
+    {
+        print("invalid pt");
+    }
 
-    uint64_t mask = (1ULL << 1) - 1;
+    uint64_t mask = 1ULL;
     uint64_t invalid_mask = ~(1ULL);
 
-    uint64_t *next_pt = NULL;
+    uint64_t next_pt = NULL;
     int valid = 0;
 
     if (ppn == NO_MAPPING)
@@ -37,7 +40,7 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn)
         int i = 0;
         while (i < length - 1)
         {
-            // Apply the mask
+            // Apply the mask to check validation of pte
             uint64_t extracted = pt_run[levels[i]] & mask;
             valid = (int)extracted;
 
@@ -47,8 +50,8 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn)
             }
             else
             {
-                next_pt = (uint64_t *)((pt_run[levels[i]] >> 12) << 12);
-                pt_run = phys_to_virt(*next_pt);
+                next_pt = (pt_run[levels[i]] >> 12) << 12;
+                pt_run = phys_to_virt(next_pt);
             }
             i += 1;
         }
@@ -59,27 +62,26 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn)
     }
     else
     {
-        int creat_new = 0;
         for (int i = 0; i < length - 1; i++)
         {
-            // Apply the mask
+            // Apply the mask to check validation of pte
             uint64_t extracted = pt_run[levels[i]] & mask;
             valid = (int)extracted;
-            if (valid == 1 && creat_new == 0)
+            if (valid == 1)
             {
-                next_pt = (uint64_t *)((pt_run[levels[i]] >> 12) << 12);
+                next_pt = (pt_run[levels[i]] >> 12) << 12;
             }
             else
             {
-                creat_new = 1;
                 uint64_t new_pt = (alloc_page_frame() << 12);
                 pt_run[levels[i]] = (new_pt | mask);
-                next_pt = (uint64_t *)((pt_run[levels[i]] >> 12) << 12);
+                next_pt = new_pt;
             }
-            pt_run = phys_to_virt(*next_pt);
+            pt_run = phys_to_virt(next_pt);
         }
         pt_run[levels[length - 1]] = (ppn << 12) | mask;
     }
+    free(levels);
 }
 
 uint64_t page_table_query(uint64_t pt, uint64_t vpn)
@@ -88,15 +90,19 @@ uint64_t page_table_query(uint64_t pt, uint64_t vpn)
     int *levels = PT_Levels(vpn);
     int length = 5;
     uint64_t *pt_run = phys_to_virt(pt);
+    if (pt_run == NULL)
+    {
+        print("invalid pt");
+    }
 
     // Create the valid bit mask
-    uint64_t mask = (1ULL << 1) - 1;
-    uint64_t *next_pt = NULL;
+    uint64_t mask = 1ULL;
+    uint64_t next_pt = NULL;
     int valid = 0;
 
     for (int i = 0; i < length - 1; i++)
     {
-        // Apply the mask
+        // Apply the mask to check if the pte is valid
         uint64_t extracted = pt_run[levels[i]] & mask;
         valid = (int)extracted;
 
@@ -106,9 +112,10 @@ uint64_t page_table_query(uint64_t pt, uint64_t vpn)
         }
         else
         {
-            next_pt = (uint64_t *)((pt_run[levels[i]] >> 12) << 12);
+            next_pt = (pt_run[levels[i]] >> 12) << 12;
         }
-        pt_run = phys_to_virt(*next_pt);
+        pt_run = phys_to_virt(next_pt);
     }
-    return (pt_run[levels[length - 1]] >> 12);
+    uint64_t ppn = pt_run[levels[length - 1]] >> 12;
+    return ppn;
 }
