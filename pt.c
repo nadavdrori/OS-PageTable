@@ -1,15 +1,16 @@
 #include "os.h"
 #include <stdlib.h>
+#include <stdio.h>
 
-int *PT_Levels(uint16_t vpn)
+int *PT_Levels(uint64_t vpn)
 {
     int *levels = malloc(5 * sizeof(int));
     int length = 5;
     int j = 0;
 
     // Create the levels bit mask
-    uint64_t mask = (1ULL << 9) - 1;
-    for (int i = 0; i <= 36; i += 9; j++)
+    uint64_t mask = 0x1FF; // Hexadecimal representation of 9 bits set to 1
+    for (int i = 0; i <= 36; i += 9, j++)
     {
         // Apply the mask and shift right
         uint64_t extracted = (vpn >> i) & mask;
@@ -23,16 +24,12 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn)
 {
     int *levels = PT_Levels(vpn);
     int length = 5;
-    uint64_t *pt_run = phys_to_virt(pt);
-    if (pt_run == NULL)
-    {
-        print("invalid pt");
-    }
+    uint64_t *pt_run = phys_to_virt(pt << 12);
 
     uint64_t mask = 1ULL;
     uint64_t invalid_mask = ~(1ULL);
 
-    uint64_t next_pt = NULL;
+    uint64_t next_pt = 0;
     int valid = 0;
 
     if (ppn == NO_MAPPING)
@@ -86,21 +83,16 @@ void page_table_update(uint64_t pt, uint64_t vpn, uint64_t ppn)
 
 uint64_t page_table_query(uint64_t pt, uint64_t vpn)
 {
-
     int *levels = PT_Levels(vpn);
     int length = 5;
-    uint64_t *pt_run = phys_to_virt(pt);
-    if (pt_run == NULL)
-    {
-        print("invalid pt");
-    }
+    uint64_t *pt_run = phys_to_virt(pt << 12);
 
     // Create the valid bit mask
     uint64_t mask = 1ULL;
-    uint64_t next_pt = NULL;
+    uint64_t next_pt = 0;
     int valid = 0;
 
-    for (int i = 0; i < length - 1; i++)
+    for (int i = 0; i < length-1; i++)
     {
         // Apply the mask to check if the pte is valid
         uint64_t extracted = pt_run[levels[i]] & mask;
@@ -116,6 +108,13 @@ uint64_t page_table_query(uint64_t pt, uint64_t vpn)
         }
         pt_run = phys_to_virt(next_pt);
     }
+    // last level validation check
+    uint64_t extracted = pt_run[levels[length-1]] & mask;
+    valid = (int)extracted;
+    if (valid == 0){
+        return NO_MAPPING;
+    }
     uint64_t ppn = pt_run[levels[length - 1]] >> 12;
+    free(levels);
     return ppn;
 }
